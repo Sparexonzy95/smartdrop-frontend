@@ -2,39 +2,41 @@
 
 import { FreighterError } from "@/lib/error-handler";
 import {
-    createContext,
-    useCallback,
-    useContext,
-    useMemo,
-    useState,
-    type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
 } from "react";
+
+type FreighterApi = typeof import("@stellar/freighter-api");
 
 type StellarWalletContextValue = {
   publicKey: string | null;
-  walletApi: any | null;
+  walletApi: FreighterApi | null;
   isConnected: boolean;
   connect: () => Promise<void>;
   disconnect: () => void;
 };
 
 const StellarWalletContext = createContext<StellarWalletContextValue | null>(
-  null
+  null,
 );
 
 export function StellarWalletProvider({ children }: { children: ReactNode }) {
   const [publicKey, setPublicKey] = useState<string | null>(null);
-  const [walletApi, setWalletApi] = useState<any | null>(null);
+  const [walletApi, setWalletApi] = useState<FreighterApi | null>(null);
 
   const connect = useCallback(async () => {
     const freighter = await import("@stellar/freighter-api");
-    
+
     try {
       const connected = await freighter.isConnected();
       if (!connected.isConnected || connected.error) {
         throw new FreighterError(
           "FREIGHTER_NOT_INSTALLED",
-          "Freighter wallet not detected. Install it from https://www.freighter.app"
+          "Freighter wallet not detected. Install it from https://www.freighter.app",
         );
       }
 
@@ -44,13 +46,13 @@ export function StellarWalletProvider({ children }: { children: ReactNode }) {
         if (access.error) {
           throw new FreighterError(
             "FREIGHTER_REJECTED",
-            access.error || "Wallet connection was rejected"
+            access.error || "Wallet connection was rejected",
           );
         }
         if (!access.address) {
           throw new FreighterError(
             "FREIGHTER_REJECTED",
-            "Failed to get wallet address"
+            "Failed to get wallet address",
           );
         }
         setPublicKey(access.address);
@@ -62,21 +64,22 @@ export function StellarWalletProvider({ children }: { children: ReactNode }) {
       if (addr.error) {
         throw new FreighterError(
           "FREIGHTER_UNKNOWN",
-          addr.error || "Failed to get wallet address"
+          addr.error || "Failed to get wallet address",
         );
       }
+
       if (!addr.address) {
         const access = await freighter.requestAccess();
         if (access.error) {
           throw new FreighterError(
             "FREIGHTER_REJECTED",
-            access.error || "Wallet connection was rejected"
+            access.error || "Wallet connection was rejected",
           );
         }
         if (!access.address) {
           throw new FreighterError(
             "FREIGHTER_REJECTED",
-            "Failed to get wallet address"
+            "Failed to get wallet address",
           );
         }
         setPublicKey(access.address);
@@ -86,14 +89,15 @@ export function StellarWalletProvider({ children }: { children: ReactNode }) {
         setWalletApi(freighter);
       }
     } catch (error) {
-      // Re-throw FreighterErrors as-is
+      // Re-throw FreighterErrors as-is.
       if (error instanceof FreighterError) {
         throw error;
       }
-      // Wrap other errors
+
+      // Wrap other errors.
       throw new FreighterError(
         "FREIGHTER_UNKNOWN",
-        error instanceof Error ? error.message : "Failed to connect wallet"
+        error instanceof Error ? error.message : "Failed to connect wallet",
       );
     }
   }, []);
@@ -111,7 +115,7 @@ export function StellarWalletProvider({ children }: { children: ReactNode }) {
       connect,
       disconnect,
     }),
-    [publicKey, walletApi, connect, disconnect]
+    [publicKey, walletApi, connect, disconnect],
   );
 
   return (

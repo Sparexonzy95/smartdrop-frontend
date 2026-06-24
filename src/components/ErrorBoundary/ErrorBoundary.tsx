@@ -5,7 +5,7 @@
 
 "use client";
 
-import { errorLogger } from "@/lib/error-handler";
+import { errorLogger, SmartDropError } from "@/lib/error-handler";
 import { Box, Button, Heading, Text, VStack } from "@chakra-ui/react";
 import React, { Component, type ReactNode } from "react";
 
@@ -19,7 +19,34 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ComponentBoundaryError extends SmartDropError {
+  readonly code = "COMPONENT_ERROR";
+  readonly userMessage = "A component encountered an error.";
+  readonly isTransient = false;
+  readonly isCritical = true;
+
+  private readonly componentStack?: string | null;
+
+  constructor(error: Error, errorInfo: React.ErrorInfo) {
+    super(error.message, error);
+    this.componentStack = errorInfo.componentStack;
+    Object.setPrototypeOf(this, ComponentBoundaryError.prototype);
+  }
+
+  getLogContext(): Record<string, unknown> {
+    return {
+      ...super.getLogContext(),
+      errorType: "ComponentBoundaryError",
+      componentStack: this.componentStack,
+      stack: this.originalError?.stack,
+    };
+  }
+}
+
+export class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -30,20 +57,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log the error
     errorLogger.log(
-      {
-        code: "COMPONENT_ERROR",
-        userMessage: "A component encountered an error",
-        isTransient: false,
-        isCritical: true,
-        getLogContext: () => ({
-          componentStack: errorInfo.componentStack,
-          message: error.message,
-          stack: error.stack,
-        }),
-      } as any,
-      "React Error Boundary"
+      new ComponentBoundaryError(error, errorInfo),
+      "React Error Boundary",
     );
   }
 
@@ -131,7 +147,7 @@ export function ErrorBoundarySection({
     <ErrorBoundary
       fallback={
         fallback ||
-        ((error, retry) => (
+        ((_error, retry) => (
           <Box
             w="100%"
             p={6}

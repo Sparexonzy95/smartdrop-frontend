@@ -3,19 +3,32 @@
  * Provides caching, error handling, and automatic refetching
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { sorobanService, type UserPosition, type TransactionResult } from '@/lib/soroban';
-import { useStellarWallet } from '@/context/StellarWalletContext';
-import { useToast } from '@chakra-ui/react';
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  sorobanService,
+  type TransactionResult,
+  type UserPosition,
+} from "@/lib/soroban";
+import { useErrorHandler } from "@/context/ErrorContext";
+import { useStellarWallet } from "@/context/StellarWalletContext";
+import { useToast } from "@chakra-ui/react";
 
 // Query Keys
 export const QUERY_KEYS = {
-  POOLS: 'pools',
-  USER_POSITION: 'userPosition',
-  USER_CREDITS: 'userCredits',
-  PLATFORM_STATS: 'platformStats',
-  BOOST_CONFIG: 'boostConfig',
+  POOLS: "pools",
+  USER_POSITION: "userPosition",
+  USER_CREDITS: "userCredits",
+  PLATFORM_STATS: "platformStats",
+  BOOST_CONFIG: "boostConfig",
 } as const;
+
+type PlatformStats = {
+  totalValueLocked: string;
+  totalUsers: number;
+  onlineUsers: number;
+  totalPools: number;
+};
 
 /**
  * Hook to fetch all available farming pools
@@ -82,7 +95,8 @@ export const usePlatformStats = () => {
 export const useLockAssets = () => {
   const { walletApi, publicKey } = useStellarWallet();
   const queryClient = useQueryClient();
-  const toast = useToast();
+  const successToast = useToast();
+  const toast = useErrorHandler();
 
   return useMutation({
     mutationFn: async ({
@@ -93,16 +107,16 @@ export const useLockAssets = () => {
       amount: string;
     }) => {
       if (!walletApi || !publicKey) {
-        throw new Error('Wallet not connected');
+        throw new Error("Wallet not connected");
       }
       return sorobanService.lockAssets(poolId, publicKey, amount, walletApi);
     },
     onSuccess: (result: TransactionResult, variables) => {
       if (result.success) {
-        toast({
-          title: 'Assets Locked Successfully',
+        successToast({
+          title: "Assets Locked Successfully",
           description: `Transaction: ${result.transactionHash?.slice(0, 8)}...`,
-          status: 'success',
+          status: "success",
           duration: 5000,
           isClosable: true,
         });
@@ -121,23 +135,14 @@ export const useLockAssets = () => {
           queryKey: [QUERY_KEYS.POOLS],
         });
       } else {
-        toast({
-          title: 'Lock Assets Failed',
-          description: result.error || 'Unknown error occurred',
-          status: 'error',
-          duration: 8000,
-          isClosable: true,
-        });
+        toast.handleError(
+          new Error(result.error || "Lock assets failed."),
+          "Lock Assets",
+        );
       }
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Transaction Error',
-        description: error.message,
-        status: 'error',
-        duration: 8000,
-        isClosable: true,
-      });
+      toast.handleError(error, "Lock Assets");
     },
   });
 };
@@ -148,7 +153,8 @@ export const useLockAssets = () => {
 export const useUnlockAssets = () => {
   const { walletApi, publicKey } = useStellarWallet();
   const queryClient = useQueryClient();
-  const toast = useToast();
+  const successToast = useToast();
+  const toast = useErrorHandler();
 
   return useMutation({
     mutationFn: async ({
@@ -159,16 +165,16 @@ export const useUnlockAssets = () => {
       amount: string;
     }) => {
       if (!walletApi || !publicKey) {
-        throw new Error('Wallet not connected');
+        throw new Error("Wallet not connected");
       }
       return sorobanService.unlockAssets(poolId, publicKey, amount, walletApi);
     },
     onSuccess: (result: TransactionResult, variables) => {
       if (result.success) {
-        toast({
-          title: 'Assets Unlocked Successfully',
+        successToast({
+          title: "Assets Unlocked Successfully",
           description: `Transaction: ${result.transactionHash?.slice(0, 8)}...`,
-          status: 'success',
+          status: "success",
           duration: 5000,
           isClosable: true,
         });
@@ -187,23 +193,14 @@ export const useUnlockAssets = () => {
           queryKey: [QUERY_KEYS.POOLS],
         });
       } else {
-        toast({
-          title: 'Unlock Assets Failed',
-          description: result.error || 'Unknown error occurred',
-          status: 'error',
-          duration: 8000,
-          isClosable: true,
-        });
+        toast.handleError(
+          new Error(result.error || "Unlock assets failed."),
+          "Unlock Assets",
+        );
       }
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Transaction Error',
-        description: error.message,
-        status: 'error',
-        duration: 8000,
-        isClosable: true,
-      });
+      toast.handleError(error, "Unlock Assets");
     },
   });
 };
@@ -214,7 +211,8 @@ export const useUnlockAssets = () => {
 export const useSetBoost = () => {
   const { walletApi, publicKey } = useStellarWallet();
   const queryClient = useQueryClient();
-  const toast = useToast();
+  const successToast = useToast();
+  const toast = useErrorHandler();
 
   return useMutation({
     mutationFn: async ({
@@ -225,16 +223,21 @@ export const useSetBoost = () => {
       allocationPercentage: number;
     }) => {
       if (!walletApi || !publicKey) {
-        throw new Error('Wallet not connected');
+        throw new Error("Wallet not connected");
       }
-      return sorobanService.setBoost(poolId, publicKey, allocationPercentage, walletApi);
+      return sorobanService.setBoost(
+        poolId,
+        publicKey,
+        allocationPercentage,
+        walletApi,
+      );
     },
     onSuccess: (result: TransactionResult, variables) => {
       if (result.success) {
-        toast({
-          title: 'Boost Configuration Updated',
+        successToast({
+          title: "Boost Configuration Updated",
           description: `Boost set to ${variables.allocationPercentage}%`,
-          status: 'success',
+          status: "success",
           duration: 5000,
           isClosable: true,
         });
@@ -250,23 +253,14 @@ export const useSetBoost = () => {
           queryKey: [QUERY_KEYS.BOOST_CONFIG, variables.poolId],
         });
       } else {
-        toast({
-          title: 'Boost Configuration Failed',
-          description: result.error || 'Unknown error occurred',
-          status: 'error',
-          duration: 8000,
-          isClosable: true,
-        });
+        toast.handleError(
+          new Error(result.error || "Boost configuration failed."),
+          "Boost Configuration",
+        );
       }
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Transaction Error',
-        description: error.message,
-        status: 'error',
-        duration: 8000,
-        isClosable: true,
-      });
+      toast.handleError(error, "Boost Configuration");
     },
   });
 };
@@ -279,20 +273,20 @@ export const useAllUserPositions = () => {
   const { data: pools } = usePools();
 
   return useQuery({
-    queryKey: [QUERY_KEYS.USER_POSITION, 'all', publicKey],
+    queryKey: [QUERY_KEYS.USER_POSITION, "all", publicKey],
     queryFn: async () => {
       if (!publicKey || !pools) return [];
 
       const positions = await Promise.allSettled(
-        pools.map(pool => sorobanService.getUserPosition(pool.id, publicKey))
+        pools.map((pool) => sorobanService.getUserPosition(pool.id, publicKey)),
       );
 
       return positions
         .map((result, index) => ({
           pool: pools[index],
-          position: result.status === 'fulfilled' ? result.value : null,
+          position: result.status === "fulfilled" ? result.value : null,
         }))
-        .filter(item => item.position !== null);
+        .filter((item) => item.position !== null);
     },
     enabled: !!publicKey && !!pools && pools.length > 0,
     staleTime: 15000,
@@ -308,16 +302,18 @@ export const useTotalUserCredits = () => {
   const { data: pools } = usePools();
 
   return useQuery({
-    queryKey: [QUERY_KEYS.USER_CREDITS, 'total', publicKey],
+    queryKey: [QUERY_KEYS.USER_CREDITS, "total", publicKey],
     queryFn: async () => {
-      if (!publicKey || !pools) return '0';
+      if (!publicKey || !pools) return "0";
 
       const credits = await Promise.allSettled(
-        pools.map(pool => sorobanService.calculateUserCredits(pool.id, publicKey))
+        pools.map((pool) =>
+          sorobanService.calculateUserCredits(pool.id, publicKey),
+        ),
       );
 
       const totalCredits = credits.reduce((total, result) => {
-        if (result.status === 'fulfilled') {
+        if (result.status === "fulfilled") {
           return total + parseFloat(result.value);
         }
         return total;
@@ -340,26 +336,29 @@ export const useOptimisticUpdate = () => {
   const updateUserPosition = (
     poolId: string,
     userAddress: string,
-    updateFn: (old: UserPosition | null) => UserPosition | null
+    updateFn: (old: UserPosition | null) => UserPosition | null,
   ) => {
     queryClient.setQueryData(
       [QUERY_KEYS.USER_POSITION, poolId, userAddress],
-      updateFn
+      updateFn,
     );
   };
 
   const updateCredits = (
     poolId: string,
     userAddress: string,
-    newCredits: string
+    newCredits: string,
   ) => {
     queryClient.setQueryData(
       [QUERY_KEYS.USER_CREDITS, poolId, userAddress],
-      newCredits
+      newCredits,
     );
   };
 
-  const updatePlatformStats = (updateFn: (old: unknown) => unknown) => {
+
+  const updatePlatformStats = (
+    updateFn: (old: PlatformStats | undefined) => PlatformStats | undefined,
+  ) => {
     queryClient.setQueryData([QUERY_KEYS.PLATFORM_STATS], updateFn);
   };
 
@@ -378,20 +377,13 @@ export const useTransactionStates = () => {
   const unlockMutation = useUnlockAssets();
   const boostMutation = useSetBoost();
 
-  const isLoading = 
-    lockMutation.isPending || 
-    unlockMutation.isPending || 
-    boostMutation.isPending;
+  const isLoading =
+    lockMutation.isPending || unlockMutation.isPending || boostMutation.isPending;
 
-  const hasError = 
-    lockMutation.isError || 
-    unlockMutation.isError || 
-    boostMutation.isError;
+  const hasError =
+    lockMutation.isError || unlockMutation.isError || boostMutation.isError;
 
-  const error = 
-    lockMutation.error || 
-    unlockMutation.error || 
-    boostMutation.error;
+  const error = lockMutation.error || unlockMutation.error || boostMutation.error;
 
   const reset = () => {
     lockMutation.reset();

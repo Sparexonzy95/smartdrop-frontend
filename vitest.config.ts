@@ -6,13 +6,9 @@ export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
-    // Playwright specs live in tests/ and are run by `playwright test`, not vitest.
-    exclude: ['tests/**', 'node_modules/**'],
-    environmentMatchGlobs: [
-      ['src/hooks/**', 'jsdom'],
-      ['src/lib/**', 'node'],
-    ],
     environment: 'jsdom',
+    include: ['src/**/*.test.{ts,tsx}'],
+    exclude: ['node_modules/**', 'tests/**'],
   },
   resolve: {
     alias: {

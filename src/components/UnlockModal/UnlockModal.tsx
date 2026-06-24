@@ -1,8 +1,8 @@
 "use client";
 
 import {
-    poolContractId,
-    stellarNetwork,
+  poolContractId,
+  stellarNetwork,
 } from "@/config";
 import { useErrorHandler } from "@/context/ErrorContext";
 import { useStellarWallet } from "@/context/StellarWalletContext";
@@ -12,22 +12,22 @@ import { stellarExpertTxUrl, unlockAssets, computePartialUnlockPreview } from "@
 import { useFarmStore } from "@/store/farmStore";
 import { unlockAvailableAt } from "@/types/farm";
 import {
-    Alert,
-    AlertIcon,
-    Badge,
-    Box,
-    Button,
-    Flex,
-    Input,
-    Link,
-    Modal,
-    ModalBody,
-    ModalCloseButton,
-    ModalContent,
-    ModalHeader,
-    ModalOverlay,
-    Spinner,
-    Text,
+  Alert,
+  AlertIcon,
+  Badge,
+  Box,
+  Button,
+  Flex,
+  Input,
+  Link,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalHeader,
+  ModalOverlay,
+  Spinner,
+  Text,
 } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -62,9 +62,12 @@ export default function UnlockModal() {
       setError(null);
       setTxHash(null);
 
-      // Focus on amount input when modal opens for better accessibility
+      // Focus on amount input when modal opens for better accessibility.
       setTimeout(() => {
-        const amountInput = document.querySelector('input[type="number"]') as HTMLInputElement;
+        const amountInput = document.querySelector(
+          'input[type="number"]',
+        ) as HTMLInputElement | null;
+
         if (amountInput) {
           amountInput.focus();
           amountInput.select();
@@ -75,7 +78,7 @@ export default function UnlockModal() {
 
   const explorerUrl = useMemo(
     () => (txHash ? stellarExpertTxUrl(txHash, stellarNetwork) : null),
-    [txHash]
+    [txHash],
   );
 
   if (!position) return null;
@@ -100,16 +103,23 @@ export default function UnlockModal() {
       setError("Connect your Freighter wallet to unlock.");
       return;
     }
+
+    if (!walletApi) {
+      setError("Connect your Freighter wallet to unlock.");
+      return;
+    }
+
     if (!canUnlock) {
       setError("Lock period has not elapsed yet.");
       return;
     }
+
     if (!amountValid) {
       setError(`Enter an amount between 0.01 and ${position.lockedAmount}.`);
       return;
     }
 
-    // Additional validation for minimum unlock amount
+    // Additional validation for minimum unlock amount.
     if (numericAmount < 0.01) {
       setError("Minimum unlock amount is 0.01.");
       return;
@@ -117,7 +127,9 @@ export default function UnlockModal() {
 
     setError(null);
     setPending(true);
+
     const trackingStartTime = Date.now();
+
     trackEvent("unlock_initiated", {
       farm: position.name,
       symbol: position.symbol,
@@ -125,7 +137,8 @@ export default function UnlockModal() {
       partial: numericAmount < position.lockedAmount,
       lockPeriodElapsed: canUnlock,
       timeRemaining: countdown.remainingMs,
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+      userAgent:
+        typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
     });
 
     try {
@@ -135,12 +148,34 @@ export default function UnlockModal() {
         amount,
         walletApi,
       });
+
+      if (!result.success) {
+        const normalizedError = toast.handleError(
+          new Error(result.error || "Transaction signing was blocked."),
+          "Unlock Transaction",
+        );
+
+        setError(normalizedError.userMessage);
+
+        trackEvent("unlock_failed", {
+          farm: position.name,
+          symbol: position.symbol,
+          amount: numericAmount,
+          reason: normalizedError.code,
+          errorMessage: normalizedError.message,
+        });
+
+        return;
+      }
+
       const hash = result.hash || result.transactionHash;
       setTxHash(hash || null);
+
       toast.success(
         "Unlock Submitted",
-        `${numericAmount} ${position.symbol} unlock transaction submitted successfully`
+        `${numericAmount} ${position.symbol} unlock transaction submitted successfully`,
       );
+
       trackEvent("unlock_succeeded", {
         farm: position.name,
         symbol: position.symbol,
@@ -150,15 +185,13 @@ export default function UnlockModal() {
         processingTime: Date.now() - trackingStartTime,
       });
       // TODO(#28): optimistic queryClient.getQueryData update attaches here pending
-      //            maintainer confirmation — see issue discussion
-      toast.success(
-        "Unlock submitted",
-        `${numericAmount} ${position.symbol} unlock request sent.`
-      );
+      //            maintainer confirmation â€” see issue discussion
       close();
+
     } catch (err) {
       const normalizedError = toast.handleError(err, "Unlock Transaction");
       setError(normalizedError.userMessage);
+
       trackEvent("unlock_failed", {
         farm: position.name,
         symbol: position.symbol,
@@ -195,9 +228,10 @@ export default function UnlockModal() {
               <Badge colorScheme="green" borderRadius="full" px={3} py={1}>
                 Unlock confirmed
               </Badge>
-                <Text fontSize="sm" color="app.muted">
-                {numericAmount} {position.symbol} unlock transaction submitted successfully.
-                Your assets will be available in your wallet shortly.
+              <Text fontSize="sm" color="app.muted">
+                {numericAmount} {position.symbol} unlock transaction submitted
+                successfully. Your assets will be available in your wallet
+                shortly.
               </Text>
               <Box
                 w="100%"
@@ -210,14 +244,14 @@ export default function UnlockModal() {
                   "Remaining stake",
                   `${Math.max(0, position.lockedAmount - numericAmount)} ${
                     position.symbol
-                  }`
+                  }`,
                 )}
                 {explorerUrl &&
                   infoRow(
                     "Transaction",
                     <Link href={explorerUrl} isExternal color="app.accent">
                       View on Stellar Expert
-                    </Link>
+                    </Link>,
                   )}
               </Box>
               <Button
@@ -233,20 +267,27 @@ export default function UnlockModal() {
             </Flex>
           ) : (
             <Flex direction="column" gap={6}>
-              <Box border="1px solid" borderColor="app.border" borderRadius="2xl" p={3}>
+              <Box
+                border="1px solid"
+                borderColor="app.border"
+                borderRadius="2xl"
+                p={3}
+              >
                 {infoRow(
                   "Amount locked",
-                  `${position.lockedAmount} ${position.symbol}`
+                  `${position.lockedAmount} ${position.symbol}`,
                 )}
                 {infoRow(
                   "Time remaining",
                   <Text color={canUnlock ? "app.accent" : "app.text"}>
                     {countdown.label}
-                  </Text>
+                  </Text>,
                 )}
                 {infoRow(
                   "Available to unlock",
-                  `${canUnlock ? position.lockedAmount : 0} ${position.symbol}`
+                  `${canUnlock ? position.lockedAmount : 0} ${
+                    position.symbol
+                  }`,
                 )}
               </Box>
 
@@ -259,8 +300,9 @@ export default function UnlockModal() {
                   fontSize="sm"
                 >
                   <AlertIcon color="#f6c453" />
-                  Assets are time-locked for security. You can unlock once the countdown
-                  reaches zero to protect against impulsive withdrawals.
+                  Assets are time-locked for security. You can unlock once the
+                  countdown reaches zero to protect against impulsive
+                  withdrawals.
                 </Alert>
               )}
 
@@ -307,7 +349,7 @@ export default function UnlockModal() {
                     </Text>
                     <Text
                       fontSize="xs"
-                      color={ACCENT}
+                      color="app.accent"
                       cursor={canUnlock ? "pointer" : "not-allowed"}
                       onClick={canUnlock ? setMax : undefined}
                       _hover={canUnlock ? { opacity: 0.8 } : {}}
@@ -344,7 +386,7 @@ export default function UnlockModal() {
                     fontSize="sm"
                   >
                     <AlertIcon color="#f6c453" />
-                    Warning: remaining stake below minimum — the contract will close this position entirely
+                    Warning: remaining stake below minimum â€” the contract will close this position entirely
                   </Alert>
                 )}
 

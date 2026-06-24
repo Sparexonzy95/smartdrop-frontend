@@ -32,6 +32,7 @@ import { unlockAvailableAt, type FarmPosition } from "@/types/farm";
 import { useAllUserPositions, usePools } from "@/hooks/useSorobanQuery";
 import { useSorobanEvents } from "@/hooks/useSorobanEvents";
 import type { UserPosition } from "@/lib/soroban";
+
 import { useFarmStore } from "@/store/farmStore";
 
 type LivePoolRow = {
@@ -103,7 +104,7 @@ function earningRowPropsAreEqual(
   );
 }
 
-export const EarningRow = memo(function EarningRow({
+const EarningRow = memo(function EarningRow({
   position,
 }: EarningRowProps) {
   const openUnlock = useFarmStore((s) => s.openUnlock);
